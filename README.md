@@ -83,6 +83,7 @@ cd frontend
 npm install
 npm run dev
 ```
+---
 
-## Author
+### Author
 - Github: https://github.com/Adeyanju-dev
