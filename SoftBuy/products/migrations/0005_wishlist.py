@@ -1,0 +1,30 @@
+from django.conf import settings
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("products", "0004_alter_product_currency"),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="Wishlist",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("product", models.ForeignKey(on_delete=models.deletion.CASCADE, related_name="wishlisted_by", to="products.product")),
+                ("user", models.ForeignKey(on_delete=models.deletion.CASCADE, related_name="wishlist_items", to=settings.AUTH_USER_MODEL)),
+            ],
+            options={
+                "db_table": "wishlists",
+                "ordering": ["-created_at"],
+            },
+        ),
+        migrations.AddConstraint(
+            model_name="wishlist",
+            constraint=models.UniqueConstraint(fields=("user", "product"), name="unique_user_wishlist_product"),
+        ),
+    ]

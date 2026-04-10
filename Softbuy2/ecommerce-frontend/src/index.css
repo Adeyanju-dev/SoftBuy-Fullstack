@@ -1,0 +1,85 @@
+/* RESET */
+:root {
+  --softbuy-scrollbar-track: rgba(2, 6, 23, 0.92);
+  --softbuy-scrollbar-thumb: rgba(34, 211, 238, 0.38);
+  --softbuy-scrollbar-thumb-hover: rgba(59, 130, 246, 0.6);
+  --softbuy-scrollbar-border: rgba(148, 163, 184, 0.14);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  background: #0f172a; /* solid background to remove visual gaps */
+  font-family: 'Inter', sans-serif;
+  color-scheme: dark;
+  scrollbar-width: thin;
+  scrollbar-color: var(--softbuy-scrollbar-thumb) var(--softbuy-scrollbar-track);
+}
+
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#root::-webkit-scrollbar,
+.softbuy-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+#root::-webkit-scrollbar-track,
+.softbuy-scrollbar::-webkit-scrollbar-track {
+  background: var(--softbuy-scrollbar-track);
+}
+
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+#root::-webkit-scrollbar-thumb,
+.softbuy-scrollbar::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--softbuy-scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+#root::-webkit-scrollbar-thumb:hover,
+.softbuy-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--softbuy-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+#root::-webkit-scrollbar-corner,
+.softbuy-scrollbar::-webkit-scrollbar-corner {
+  background: var(--softbuy-scrollbar-track);
+}
+
+.softbuy-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--softbuy-scrollbar-thumb) var(--softbuy-scrollbar-track);
+  border-color: var(--softbuy-scrollbar-border);
+}
+
+/* Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
