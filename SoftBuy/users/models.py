@@ -43,7 +43,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_email_verification_link(self):
         uid = urlsafe_base64_encode(force_bytes(self.pk))
         token = default_token_generator.make_token(self)
-        return f"{settings.FRONTEND_URL}/verify-email/{uid}/{token}/"
+        frontend_url = str(getattr(settings, "FRONTEND_URL", "") or "").rstrip("/")
+        return f"{frontend_url}/verify-email/{uid}/{token}/"
 
     def __str__(self):
         return self.email

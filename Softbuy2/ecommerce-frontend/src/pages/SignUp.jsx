@@ -17,6 +17,10 @@ export default function SignUp() {
   const [showLoader, setShowLoader] = useState(false);
   const [error, setError] = useState("");
 
+  const verificationHref = formData.email
+    ? `/verify-email-sent?email=${encodeURIComponent(formData.email)}`
+    : "/verify-email-sent";
+
   const handleChange = (event) => {
     setFormData((current) => ({
       ...current,
@@ -41,7 +45,7 @@ export default function SignUp() {
 
       if (response.status === 201) {
         setShowLoader(false);
-        navigate("/verify-email-sent", { state: { email: formData.email } });
+        navigate(verificationHref, { state: { email: formData.email } });
       }
     } catch (signupError) {
       if (signupError.response?.data) {
@@ -146,6 +150,17 @@ export default function SignUp() {
           Already have an account?{" "}
           <Link to="/login" className="text-[#00ffd5] transition hover:underline">
             Login
+          </Link>
+        </p>
+
+        <p className="text-center text-sm text-gray-400">
+          Did not get your verification email?{" "}
+          <Link
+            to={verificationHref}
+            state={{ email: formData.email }}
+            className="text-[#00ffd5] transition hover:underline"
+          >
+            Resend it
           </Link>
         </p>
       </form>

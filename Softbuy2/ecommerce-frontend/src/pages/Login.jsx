@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AuthLayout from "../components/AuthLayout";
-import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { useAuth} from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -11,8 +10,20 @@ const Login = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [showLoader, setShowLoader] = useState(false);
+  const [error, setError] = useState("");
+  const [showVerificationHelp, setShowVerificationHelp] = useState(false);
   const { login } = useAuth();
+
+  const resendVerificationHref = useMemo(() => {
+    const params = new URLSearchParams();
+
+    if (formData.email) {
+      params.set("email", formData.email);
+    }
+
+    const query = params.toString();
+    return query ? `/verify-email-sent?${query}` : "/verify-email-sent";
+  }, [formData.email]);
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,37 +32,30 @@ const Login = () => {
     e.preventDefault();
 
     if (!formData.email || !formData.password) {
-      alert("Both email and password are required.");
       return;
     }
 
+    setError("");
+    setShowVerificationHelp(false);
     setLoading(true);
 
     try {
       await login(formData.email, formData.password);
-      setShowLoader(true);
+    } catch (loginError) {
+      const nextError =
+        loginError.response?.data?.error || loginError.message || "Could not log in right now.";
 
-    } catch {
+      setError(nextError);
+      setShowVerificationHelp(
+        loginError.response?.status === 403 && /verify/i.test(String(nextError))
+      );
+    } finally {
       setLoading(false);
-      alert("Invalid email or password.");
     }
   };
 
   return (
     <AuthLayout>
-      <AnimatePresence>
-        {showLoader && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 flex items-center justify-center bg-[#0a0a0f]/80 backdrop-blur-sm z-50"
-          >
-            <div className="w-12 h-12 border-4 border-[#00ffd5] border-t-transparent rounded-full animate-spin"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
         <div className="space-y-4">
           <input
@@ -77,6 +81,21 @@ const Login = () => {
           />
         </div>
 
+        {error ? <p className="text-sm text-center text-rose-300">{error}</p> : null}
+
+        {showVerificationHelp ? (
+          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+            <p>Your account exists, but the email still needs to be verified.</p>
+            <Link
+              to={resendVerificationHref}
+              state={{ email: formData.email }}
+              className="mt-2 inline-block font-semibold text-[#00ffd5] hover:underline"
+            >
+              Resend verification email
+            </Link>
+          </div>
+        ) : null}
+
         <button
           type="submit"
           disabled={loading}
@@ -93,6 +112,17 @@ const Login = () => {
             Create Account
           </Link>
         </div>
+
+        <p className="text-center text-sm text-gray-400">
+          Need a new verification link?{" "}
+          <Link
+            to={resendVerificationHref}
+            state={{ email: formData.email }}
+            className="text-[#00ffd5] hover:underline"
+          >
+            Resend email
+          </Link>
+        </p>
       </form>
     </AuthLayout>
   );

@@ -5,11 +5,20 @@ import softbuyApi from "../lib/softbuyApi";
 
 export default function VerifyEmailSent() {
   const location = useLocation();
-  const [email, setEmail] = useState(location.state?.email || "");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextEmail = location.state?.email || params.get("email") || "";
+
+    if (nextEmail) {
+      setEmail(nextEmail);
+    }
+  }, [location.search, location.state]);
 
   useEffect(() => {
     if (cooldown <= 0) {
@@ -39,6 +48,7 @@ export default function VerifyEmailSent() {
       setCooldown(60);
     } catch (resendError) {
       if (resendError.response?.status === 429) {
+        setCooldown(resendError.response?.data?.remaining || 60);
         setError("Please wait before resending.");
       } else {
         setError(resendError.response?.data?.error || "Could not resend verification email.");

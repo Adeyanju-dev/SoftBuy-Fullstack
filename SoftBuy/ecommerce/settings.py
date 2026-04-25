@@ -35,6 +35,39 @@ def env_bool(name, default=False):
         return False
     return default
 
+
+def normalize_origin(value, default_scheme="https"):
+    raw_value = str(value or "").strip().rstrip("/")
+    if not raw_value:
+        return ""
+
+    parsed = urlparse(raw_value if "://" in raw_value else f"{default_scheme}://{raw_value}")
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def unique_values(values):
+    seen = set()
+    result = []
+
+    for value in values:
+        normalized = str(value or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+
+    return result
+
+
+def build_origin_values(*values, default_scheme="https"):
+    return unique_values(
+        normalize_origin(value, default_scheme=default_scheme)
+        for value in values
+    )
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -43,20 +76,41 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 
+FRONTEND_URL = (
+    normalize_origin(config('FRONTEND_URL', default='http://localhost:5173'), default_scheme='http')
+    or 'http://localhost:5173'
+)
+
 LOCAL_HOSTNAMES = {'127.0.0.1', 'localhost', '0.0.0.0'}
 DATABASE_URL = config('DATABASE_URL')
 parsed_database_url = urlparse(DATABASE_URL)
 IS_LOCAL_DEVELOPMENT = DEBUG or parsed_database_url.hostname in {'localhost', '127.0.0.1'} or set(ALLOWED_HOSTS).issubset(LOCAL_HOSTNAMES)
 
+DEFAULT_BROWSER_ORIGINS = build_origin_values(
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    FRONTEND_URL,
+    config('VERCEL_PROJECT_PRODUCTION_URL', default=''),
+    config('VERCEL_URL', default=''),
+    default_scheme='https',
+)
+
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,https://soft-buy-fullstack-ot3rr982t-micheals-projects-41f432e2.vercel.app',
+    default=','.join(DEFAULT_BROWSER_ORIGINS),
+    cast=Csv(),
+)
+CORS_ALLOWED_ORIGIN_REGEXES = config(
+    'CORS_ALLOWED_ORIGIN_REGEXES',
+    default=r'^https://.*\.vercel\.app$',
     cast=Csv(),
 )
 CORS_ALLOW_CREDENTIALS = env_bool('CORS_ALLOW_CREDENTIALS', default=True)
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,https://soft-buy-fullstack-ot3rr982t-micheals-projects-41f432e2.vercel.app',
+    default=','.join(unique_values([*DEFAULT_BROWSER_ORIGINS, 'https://*.vercel.app'])),
     cast=Csv(),
 )
 
@@ -231,8 +285,6 @@ EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
-
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 
 LOG_LEVEL = config('LOG_LEVEL', default='INFO')
 
