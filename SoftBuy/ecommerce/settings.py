@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 
 import dj_database_url
 from decouple import Csv, config
-from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -25,8 +24,6 @@ import cloudinary.api
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-load_dotenv(BASE_DIR / '.env')
 
 def env_bool(name, default=False):
     value = config(name, default=str(default))
