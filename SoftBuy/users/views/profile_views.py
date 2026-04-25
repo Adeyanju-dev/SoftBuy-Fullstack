@@ -11,7 +11,7 @@ from ..serializers import (
     SellerProfileSerializer,
     UserSerializer,
 )
-from ..utils import send_verification_email_to_user
+from ..utils import get_frontend_url_from_request, send_verification_email_to_user
 
 
 @extend_schema(tags=["Authentication"], summary="Get or update current user profile")
@@ -82,7 +82,10 @@ def send_verification_email(request):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    send_verification_email_to_user(request.user)
+    send_verification_email_to_user(
+        request.user,
+        frontend_url=get_frontend_url_from_request(request),
+    )
     request.user.last_verification_sent = timezone.now()
     request.user.save(update_fields=["last_verification_sent"])
 

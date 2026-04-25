@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.utils.translation import gettext_lazy as _
+from urllib.parse import urlparse
 
 from .managers import UserManager
 
@@ -40,11 +41,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = "users"
 
-    def get_email_verification_link(self):
+    def get_email_verification_link(self, frontend_url=None):
         uid = urlsafe_base64_encode(force_bytes(self.pk))
         token = default_token_generator.make_token(self)
-        frontend_url = str(getattr(settings, "FRONTEND_URL", "") or "").rstrip("/")
-        return f"{frontend_url}/verify-email/{uid}/{token}/"
+        configured_url = frontend_url or getattr(settings, "FRONTEND_URL", "")
+        normalized_url = str(configured_url or "").strip().rstrip("/")
+        parsed_url = urlparse(normalized_url)
+
+        if not parsed_url.scheme or not parsed_url.netloc:
+            normalized_url = str(getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+
+        return f"{normalized_url}/verify-email/{uid}/{token}/"
 
     def __str__(self):
         return self.email

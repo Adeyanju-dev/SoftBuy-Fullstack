@@ -30,7 +30,7 @@ from ..serializers import (
     UserSerializer,
     VerifyResetCodeSerializer,
 )
-from ..utils import send_verification_email_to_user
+from ..utils import get_frontend_url_from_request, send_verification_email_to_user
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ logger = logging.getLogger(__name__)
 def register_user(request):
     serializer = UserRegistrationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    frontend_url = get_frontend_url_from_request(request)
 
     user = serializer.save()
     user.email_verified = False
@@ -58,7 +59,7 @@ def register_user(request):
         SellerProfile.objects.create(user=user)
 
     try:
-        send_verification_email_to_user(user)
+        send_verification_email_to_user(user, frontend_url=frontend_url)
         user.last_verification_sent = timezone.now()
         user.save(update_fields=["last_verification_sent"])
     except Exception as exc:
@@ -319,6 +320,7 @@ def reset_password(request):
 def resend_verification_email(request):
     serializer = ResendVerificationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    frontend_url = get_frontend_url_from_request(request)
 
     email = serializer.validated_data["email"]
 
@@ -345,7 +347,7 @@ def resend_verification_email(request):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
-    send_verification_email_to_user(user)
+    send_verification_email_to_user(user, frontend_url=frontend_url)
     user.last_verification_sent = timezone.now()
     user.save(update_fields=["last_verification_sent"])
 
