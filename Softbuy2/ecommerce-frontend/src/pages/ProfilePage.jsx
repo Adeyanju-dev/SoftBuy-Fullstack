@@ -14,9 +14,10 @@ import { formatAddress, formatDate } from "../lib/formatters";
 import softbuyApi from "../lib/softbuyApi";
 
 export default function ProfilePage() {
-  const { user, refreshProfile, isSeller } = useAuth();
+  const { user, refreshProfile, isSeller, enableSellerAccess } = useAuth();
   const [recentOrders, setRecentOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [sellerLoading, setSellerLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -52,6 +53,16 @@ export default function ProfilePage() {
   }, [refreshProfile]);
 
   const initials = `${user?.first_name?.[0] || ""}${user?.last_name?.[0] || ""}`.trim() || "SB";
+
+  const handleEnableSellerAccess = async () => {
+    setSellerLoading(true);
+
+    try {
+      await enableSellerAccess();
+    } finally {
+      setSellerLoading(false);
+    }
+  };
 
   return (
     <section className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
@@ -172,7 +183,19 @@ export default function ProfilePage() {
                     Open seller dashboard
                   </span>
                 </Link>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleEnableSellerAccess}
+                  disabled={sellerLoading}
+                  className="block w-full rounded-full border border-cyan-400/30 bg-cyan-500/10 px-5 py-3 text-center text-sm font-medium text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <BriefcaseBusiness className="h-4 w-4" />
+                    {sellerLoading ? "Enabling seller access..." : "Start selling on SoftBuy"}
+                  </span>
+                </button>
+              )}
               <Link
                 to="/settings"
                 className="block rounded-full border border-white/10 px-5 py-3 text-center text-sm font-medium text-white"

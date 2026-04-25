@@ -78,6 +78,7 @@ class UsersAPITests(APITestCase):
         self.verify_code_url = reverse("verify-reset-code")
         self.reset_password_url = reverse("reset-password")
         self.profile_url = reverse("user-profile")
+        self.become_seller_url = reverse("become-seller")
         self.seller_profile_url = reverse("seller-profile")
         self.address_list_url = reverse("address-list-create")
         self.send_seller_verification_url = reverse("send-verification-email")
@@ -261,6 +262,15 @@ class UsersAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_user_can_enable_seller_access(self):
+        self.authenticate(self.user)
+        response = self.client.post(self.become_seller_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_seller)
+        self.assertTrue(SellerProfile.objects.filter(user=self.user).exists())
+
     def test_seller_can_update_allowed_seller_profile_fields(self):
         self.authenticate(self.seller_user)
         response = self.client.patch(
@@ -417,7 +427,8 @@ class UsersAPITests(APITestCase):
         response = self.client.post(self.send_seller_verification_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        mock_send_email.assert_called_once_with(self.seller_user)
+        mock_send_email.assert_called_once()
+        self.assertEqual(mock_send_email.call_args.args[0], self.seller_user)
 
     def test_buyer_cannot_send_seller_verification_email(self):
         self.authenticate(self.user)

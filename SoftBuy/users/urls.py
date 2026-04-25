@@ -8,6 +8,7 @@ from .views import (
     reset_password,
     resend_verification_email,
     send_verification_email,
+    become_seller,
     UserProfileView,
     SellerProfileView,
     AddressListCreateView,
@@ -29,6 +30,7 @@ urlpatterns = [
 
     # Profile
     path("profile/", UserProfileView.as_view(), name="user-profile"),
+    path("become-seller/", become_seller, name="become-seller"),
     path("seller/profile/", SellerProfileView.as_view(), name="seller-profile"),
 
     # Address

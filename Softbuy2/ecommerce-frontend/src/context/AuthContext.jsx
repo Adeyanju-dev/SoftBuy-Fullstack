@@ -126,6 +126,20 @@ export function AuthProvider({ children }) {
     return response.data;
   }, [updateUserState]);
 
+  const enableSellerAccess = useCallback(async () => {
+    const response = await softbuyApi.becomeSeller();
+    const nextUser = response.data?.user;
+
+    if (nextUser) {
+      updateUserState(nextUser);
+    } else {
+      await refreshProfile();
+    }
+
+    toast.success(response.data?.message || "Seller access enabled");
+    return response.data;
+  }, [refreshProfile, updateUserState]);
+
   const logout = useCallback(() => {
     clearSession();
     setUser(null);
@@ -150,6 +164,7 @@ export function AuthProvider({ children }) {
         logout,
         refreshProfile,
         updateProfile,
+        enableSellerAccess,
       }}
     >
       {children}

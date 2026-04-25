@@ -136,6 +136,11 @@ class RegisterResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
 
 
+class SellerAccessResponseSerializer(serializers.Serializer):
+    user = UserSerializer()
+    message = serializers.CharField()
+
+
 class ResendVerificationCooldownSerializer(serializers.Serializer):
     error = serializers.CharField()
     remaining = serializers.IntegerField()

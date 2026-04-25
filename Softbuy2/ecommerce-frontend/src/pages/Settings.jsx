@@ -10,6 +10,7 @@ import {
   Store,
   UserCircle2,
 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -101,8 +102,19 @@ function SettingsCard({ title, description, icon: Icon, to }) {
 }
 
 export default function Settings() {
-  const { user, isSeller } = useAuth();
+  const { user, isSeller, enableSellerAccess } = useAuth();
   const firstName = user?.first_name || "There";
+  const [sellerLoading, setSellerLoading] = useState(false);
+
+  const handleEnableSellerAccess = async () => {
+    setSellerLoading(true);
+
+    try {
+      await enableSellerAccess();
+    } finally {
+      setSellerLoading(false);
+    }
+  };
 
   return (
     <section className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
@@ -145,6 +157,22 @@ export default function Settings() {
               This account is currently set up for shopping only, so seller-only actions like
               refunds and store tools stay hidden until seller access is enabled for you.
             </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleEnableSellerAccess}
+                disabled={sellerLoading}
+                className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {sellerLoading ? "Enabling seller access..." : "Become a seller"}
+              </button>
+              <Link
+                to="/profile"
+                className="rounded-full border border-white/10 px-5 py-3 text-sm font-medium text-white"
+              >
+                Back to profile
+              </Link>
+            </div>
           </div>
         )}
       </div>

@@ -21,6 +21,7 @@ from .serializers import (
     ShippingMethodSerializer,
     OrderShippingSerializer,
 )
+from notifications.utils import create_notification
 from products.models import Product, ProductVariant
 
 
@@ -386,6 +387,28 @@ class CreateOrderView(APIView):
                 )
 
             CartItem.objects.filter(cart=cart).delete()
+
+        create_notification(
+            recipient=user,
+            title="Order created",
+            message=f"Your order {order.order_number} was created successfully and is awaiting payment.",
+            notification_type="order",
+            data={"order_number": order.order_number, "order_id": order.id},
+        )
+
+        seller_profiles = {
+            item.product.seller_id: item.product.seller
+            for item in order.items.select_related("product__seller__user")
+        }
+
+        for seller_profile in seller_profiles.values():
+            create_notification(
+                recipient=seller_profile.user,
+                title="New order received",
+                message=f"A new order ({order.order_number}) includes one or more of your products.",
+                notification_type="order",
+                data={"order_number": order.order_number, "order_id": order.id},
+            )
 
         return Response(
             {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { BriefcaseBusiness, ShoppingBag } from "lucide-react";
 import AuthLayout from "../components/AuthLayout";
 import softbuyApi from "../lib/softbuyApi";
 
@@ -12,6 +13,7 @@ export default function SignUp() {
     email: "",
     password: "",
     confirm_password: "",
+    account_type: "buyer",
   });
   const [loading, setLoading] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
@@ -41,6 +43,8 @@ export default function SignUp() {
         email: formData.email,
         password: formData.password,
         password2: formData.confirm_password,
+        is_seller: formData.account_type === "seller",
+        is_buyer: true,
       });
 
       if (response.status === 201) {
@@ -87,6 +91,40 @@ export default function SignUp() {
 
       <form onSubmit={handleSubmit} className="relative z-10 mx-auto w-full max-w-md space-y-6">
         <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setFormData((current) => ({ ...current, account_type: "buyer" }))}
+              className={`rounded-2xl border p-4 text-left transition ${
+                formData.account_type === "buyer"
+                  ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
+                  : "border-white/10 bg-white/5 text-slate-300"
+              }`}
+            >
+              <ShoppingBag className="h-5 w-5" />
+              <p className="mt-3 font-semibold">Buyer account</p>
+              <p className="mt-1 text-sm text-slate-400">
+                Shop products, track orders, and save favorites.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFormData((current) => ({ ...current, account_type: "seller" }))}
+              className={`rounded-2xl border p-4 text-left transition ${
+                formData.account_type === "seller"
+                  ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-100"
+                  : "border-white/10 bg-white/5 text-slate-300"
+              }`}
+            >
+              <BriefcaseBusiness className="h-5 w-5" />
+              <p className="mt-3 font-semibold">Seller account</p>
+              <p className="mt-1 text-sm text-slate-400">
+                Open a store, list products, and manage payouts.
+              </p>
+            </button>
+          </div>
+
           <input
             type="text"
             name="first_name"
@@ -143,7 +181,11 @@ export default function SignUp() {
           disabled={loading}
           className="w-full rounded-lg bg-gradient-to-r from-[#00ffd5] to-[#0077ff] py-3 font-semibold text-gray-900 shadow-md transition hover:opacity-90 disabled:opacity-50"
         >
-          {loading ? "Creating Account..." : "Create Account"}
+          {loading
+            ? "Creating Account..."
+            : formData.account_type === "seller"
+            ? "Create Seller Account"
+            : "Create Account"}
         </button>
 
         <p className="text-center text-sm text-gray-400">

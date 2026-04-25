@@ -9,8 +9,10 @@ from ..serializers import (
     AddressSerializer,
     MessageResponseSerializer,
     SellerProfileSerializer,
+    SellerAccessResponseSerializer,
     UserSerializer,
 )
+from ..models import SellerProfile
 from ..utils import get_frontend_url_from_request, send_verification_email_to_user
 
 
@@ -58,6 +60,34 @@ class AddressDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return self.request.user.addresses.all()
+
+
+@extend_schema(
+    request=None,
+    responses={200: SellerAccessResponseSerializer},
+    tags=["Authentication"],
+    summary="Enable seller access for the current user",
+)
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def become_seller(request):
+    user = request.user
+
+    if not user.is_seller:
+        user.is_seller = True
+        if not user.is_buyer:
+            user.is_buyer = True
+        user.save(update_fields=["is_seller", "is_buyer"])
+
+    SellerProfile.objects.get_or_create(user=user)
+
+    return Response(
+        {
+            "message": "Seller access has been enabled for this account.",
+            "user": UserSerializer(user).data,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @extend_schema(

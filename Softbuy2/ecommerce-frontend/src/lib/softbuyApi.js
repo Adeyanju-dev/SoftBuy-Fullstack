@@ -191,6 +191,10 @@ const softbuyApi = {
     return apiClient.patch("/api/auth/profile/", payload);
   },
 
+  becomeSeller() {
+    return apiClient.post("/api/auth/become-seller/");
+  },
+
   getSellerProfile() {
     return apiClient.get("/api/auth/seller/profile/");
   },

@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 
 from orders.models import Order
+from notifications.utils import create_notification
 from .models import Payment, Refund, Payout, Transaction
 from .serializers import (
     PaymentSerializer,
@@ -143,7 +144,14 @@ class RefundListCreateView(generics.ListCreateAPIView):
                 "amount": f"Refund amount cannot exceed remaining refundable amount of {remaining_refundable}."
             })
 
-        serializer.save(payment=payment, order=order, status="requested")
+        refund = serializer.save(payment=payment, order=order, status="requested")
+        create_notification(
+            recipient=self.request.user,
+            title="Refund requested",
+            message=f"Your refund request for order {order.order_number} has been submitted.",
+            notification_type="payment",
+            data={"refund_id": refund.id, "order_number": order.order_number},
+        )
 
 
 class RefundDetailView(generics.RetrieveUpdateAPIView):
@@ -197,6 +205,14 @@ class RefundDetailView(generics.RetrieveUpdateAPIView):
                 },
             )
 
+            create_notification(
+                recipient=refund.order.buyer,
+                title="Refund processed",
+                message=f"Your refund for order {refund.order.order_number} has been processed.",
+                notification_type="payment",
+                data={"refund_id": refund.id, "order_number": refund.order.order_number},
+            )
+
 
 class PayoutListCreateView(generics.ListCreateAPIView):
     serializer_class = PayoutSerializer
@@ -224,7 +240,14 @@ class PayoutListCreateView(generics.ListCreateAPIView):
         if not seller_profile:
             raise PermissionDenied("Seller profile was not found.")
 
-        serializer.save(seller=seller_profile, status="pending")
+        payout = serializer.save(seller=seller_profile, status="pending")
+        create_notification(
+            recipient=seller_profile.user,
+            title="Payout requested",
+            message="Your payout request has been submitted and is awaiting review.",
+            notification_type="payment",
+            data={"payout_id": payout.id},
+        )
 
 
 class PayoutDetailView(generics.RetrieveUpdateAPIView):
@@ -254,6 +277,14 @@ class PayoutDetailView(generics.RetrieveUpdateAPIView):
                     "metadata": payout.payment_details,
                     "description": f"Payout to seller {payout.seller.business_name}",
                 },
+            )
+
+            create_notification(
+                recipient=payout.seller.user,
+                title="Payout updated",
+                message=f"Your payout request is now marked as {payout.status}.",
+                notification_type="payment",
+                data={"payout_id": payout.id, "status": payout.status},
             )
 
 
@@ -525,6 +556,28 @@ class PaystackVerifyView(APIView):
             if order.status != Order.STATUS_PAID:
                 order.status = Order.STATUS_PAID
                 order.save(update_fields=["status"])
+
+            create_notification(
+                recipient=order.buyer,
+                title="Payment successful",
+                message=f"Your payment for order {order.order_number} was verified successfully.",
+                notification_type="payment",
+                data={"order_number": order.order_number, "payment_id": payment.id},
+            )
+
+            seller_profiles = {
+                item.product.seller_id: item.product.seller
+                for item in order.items.select_related("product__seller__user")
+            }
+
+            for seller_profile in seller_profiles.values():
+                create_notification(
+                    recipient=seller_profile.user,
+                    title="Order paid",
+                    message=f"Order {order.order_number} containing your product(s) has been paid.",
+                    notification_type="payment",
+                    data={"order_number": order.order_number, "payment_id": payment.id},
+                )
 
         return Response(
             {

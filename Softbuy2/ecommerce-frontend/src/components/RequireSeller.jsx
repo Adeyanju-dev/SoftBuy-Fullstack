@@ -1,10 +1,12 @@
 import { ShieldCheck, Store } from "lucide-react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useState } from "react";
 
 export default function RequireSeller({ children }) {
   const location = useLocation();
-  const { loading, isLoggedIn, isSeller } = useAuth();
+  const { loading, isLoggedIn, isSeller, enableSellerAccess } = useAuth();
+  const [enablingSeller, setEnablingSeller] = useState(false);
 
   if (loading) {
     return (
@@ -48,17 +50,26 @@ export default function RequireSeller({ children }) {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={async () => {
+                setEnablingSeller(true);
+                try {
+                  await enableSellerAccess();
+                } finally {
+                  setEnablingSeller(false);
+                }
+              }}
+              disabled={enablingSeller}
+              className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-6 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {enablingSeller ? "Enabling seller access..." : "Become a seller"}
+            </button>
             <Link
               to="/settings"
-              className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-6 py-3 text-sm font-semibold text-slate-950"
-            >
-              Open settings
-            </Link>
-            <Link
-              to="/profile"
               className="rounded-full border border-white/10 px-6 py-3 text-sm font-medium text-slate-100"
             >
-              View profile
+              Open settings
             </Link>
           </div>
         </div>

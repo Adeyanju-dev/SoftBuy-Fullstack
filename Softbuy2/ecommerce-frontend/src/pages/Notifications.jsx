@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BellRing } from "lucide-react";
+import toast from "react-hot-toast";
 import { capitalizeWords, formatDateTime } from "../lib/formatters";
 import softbuyApi from "../lib/softbuyApi";
 
@@ -7,6 +8,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updating, setUpdating] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -27,16 +29,36 @@ export default function Notifications() {
   }, []);
 
   const markRead = async (id) => {
-    await softbuyApi.markNotificationRead(id);
-    window.dispatchEvent(new Event("notificationsChanged"));
-    await loadNotifications();
+    setUpdating(true);
+
+    try {
+      await softbuyApi.markNotificationRead(id);
+      window.dispatchEvent(new Event("notificationsChanged"));
+      await loadNotifications();
+      toast.success("Notification marked as read");
+    } catch (markError) {
+      toast.error(markError.response?.data?.detail || "Could not mark this notification as read.");
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const markAllRead = async () => {
-    await softbuyApi.markAllNotificationsRead();
-    window.dispatchEvent(new Event("notificationsChanged"));
-    await loadNotifications();
+    setUpdating(true);
+
+    try {
+      await softbuyApi.markAllNotificationsRead();
+      window.dispatchEvent(new Event("notificationsChanged"));
+      await loadNotifications();
+      toast.success("All notifications marked as read");
+    } catch (markError) {
+      toast.error(markError.response?.data?.detail || "Could not update notifications.");
+    } finally {
+      setUpdating(false);
+    }
   };
+
+  const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
   return (
     <section className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
@@ -52,9 +74,10 @@ export default function Notifications() {
           <button
             type="button"
             onClick={markAllRead}
-            className="rounded-full border border-white/10 px-5 py-3 text-sm font-medium text-slate-200"
+            disabled={updating || unreadCount === 0}
+            className="rounded-full border border-white/10 px-5 py-3 text-sm font-medium text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Mark all as read
+            {updating ? "Updating..." : unreadCount > 0 ? `Mark all as read (${unreadCount})` : "All caught up"}
           </button>
         </div>
 
@@ -95,7 +118,8 @@ export default function Notifications() {
                     <button
                       type="button"
                       onClick={() => markRead(notification.id)}
-                      className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200"
+                      disabled={updating}
+                      className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Mark read
                     </button>
