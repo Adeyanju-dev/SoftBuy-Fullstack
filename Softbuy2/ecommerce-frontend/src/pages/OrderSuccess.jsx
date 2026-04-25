@@ -50,7 +50,10 @@ export default function OrderSuccess() {
       } catch (error) {
         if (active) {
           setVerification({
-            message: error.response?.data?.error || "We could not verify this Paystack reference yet.",
+            message:
+              error.response?.data?.error ||
+              error.response?.data?.detail ||
+              "We could not verify this Paystack reference yet.",
           });
         }
       } finally {

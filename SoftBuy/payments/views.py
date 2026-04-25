@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 
 from orders.models import Order
+from orders.serializers import OrderSerializer
 from notifications.utils import create_notification
 from .models import Payment, Refund, Payout, Transaction
 from .serializers import (
@@ -518,6 +519,11 @@ class PaystackVerifyView(APIView):
                 return Response(
                     {
                         "message": "Payment already verified.",
+                        "reference": payment.reference,
+                        "payment_status": payment.status,
+                        "payment_method": payment.payment_method,
+                        "order": OrderSerializer(order).data,
+                        "payment": PaymentSerializer(payment).data,
                         "order_id": order.id,
                         "payment_id": payment.id,
                     },
@@ -582,6 +588,11 @@ class PaystackVerifyView(APIView):
         return Response(
             {
                 "message": "Payment verified successfully.",
+                "reference": payment.reference,
+                "payment_status": payment.status,
+                "payment_method": payment.payment_method,
+                "order": OrderSerializer(order).data,
+                "payment": PaymentSerializer(payment).data,
                 "order_id": order.id,
                 "payment_id": payment.id,
             },

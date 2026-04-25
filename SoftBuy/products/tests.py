@@ -952,8 +952,8 @@ class ProductAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_admin_can_create_category(self):
-        self.authenticate(self.admin_user)
+    def test_seller_can_create_category(self):
+        self.authenticate(self.seller_user)
 
         response = self.client.post(
             self.category_list_url,
@@ -969,8 +969,8 @@ class ProductAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Category.objects.filter(name="Accessories").exists())
 
-    def test_non_admin_cannot_create_category(self):
-        self.authenticate(self.seller_user)
+    def test_buyer_cannot_create_category(self):
+        self.authenticate(self.buyer)
 
         response = self.client.post(
             self.category_list_url,
@@ -1029,8 +1029,8 @@ class ProductAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["slug"], self.tag.slug)
 
-    def test_admin_can_create_tag(self):
-        self.authenticate(self.admin_user)
+    def test_seller_can_create_tag(self):
+        self.authenticate(self.seller_user)
 
         response = self.client.post(
             self.tag_list_url,
@@ -1041,8 +1041,8 @@ class ProductAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Tag.objects.filter(name="On Sale").exists())
 
-    def test_non_admin_cannot_create_tag(self):
-        self.authenticate(self.seller_user)
+    def test_buyer_cannot_create_tag(self):
+        self.authenticate(self.buyer)
 
         response = self.client.post(self.tag_list_url, {"name": "Blocked Tag"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

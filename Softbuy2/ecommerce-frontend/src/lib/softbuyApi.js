@@ -294,6 +294,10 @@ const softbuyApi = {
     return collectPaginatedResults((page) => softbuyApi.listCategories(page), options);
   },
 
+  createCategory(payload) {
+    return apiClient.post("/api/products/categories/", payload);
+  },
+
   listTags(page = 1) {
     return apiClient.get("/api/products/tags/", {
       query: { page },
@@ -302,6 +306,10 @@ const softbuyApi = {
 
   listAllTags(options = {}) {
     return collectPaginatedResults((page) => softbuyApi.listTags(page), options);
+  },
+
+  createTag(payload) {
+    return apiClient.post("/api/products/tags/", payload);
   },
 
   listReviews(page = 1) {
@@ -452,6 +460,10 @@ const softbuyApi = {
 
   listAllPayments(options = {}) {
     return collectPaginatedResults((page) => softbuyApi.listPayments(page), options);
+  },
+
+  createPayment(payload) {
+    return apiClient.post("/api/payments/", payload);
   },
 
   listPayouts(page = 1) {

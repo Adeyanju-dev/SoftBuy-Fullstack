@@ -15,6 +15,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "order_number",
             "buyer_email",
             "payment_method",
+            "reference",
             "provider_payment_id",
             "status",
             "amount",

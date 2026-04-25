@@ -114,6 +114,7 @@ export default function OrderDetails() {
     } catch (paymentError) {
       setPaymentActionError(
         paymentError.response?.data?.error ||
+          paymentError.response?.data?.detail ||
           paymentError.message ||
           "Could not restart this Paystack payment."
       );

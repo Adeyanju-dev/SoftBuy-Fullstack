@@ -40,6 +40,9 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     buyer_email = serializers.EmailField(source="buyer.email", read_only=True)
     shipping_info = serializers.SerializerMethodField()
+    payment_reference = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    payment_method = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -52,6 +55,37 @@ class OrderSerializer(serializers.ModelSerializer):
         if shipping_info:
             return OrderShippingSerializer(shipping_info).data
         return None
+
+    def _get_latest_payment(self, obj):
+        prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("payments")
+        if prefetched is not None:
+            ordered = sorted(
+                prefetched,
+                key=lambda payment: (
+                    getattr(payment, "created_at", None) is None,
+                    getattr(payment, "created_at", None),
+                    getattr(payment, "id", 0),
+                ),
+                reverse=True,
+            )
+            return ordered[0] if ordered else None
+
+        return obj.payments.order_by("-created_at", "-id").first()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_payment_reference(self, obj):
+        payment = self._get_latest_payment(obj)
+        return getattr(payment, "reference", None)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_payment_status(self, obj):
+        payment = self._get_latest_payment(obj)
+        return getattr(payment, "status", None)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_payment_method(self, obj):
+        payment = self._get_latest_payment(obj)
+        return getattr(payment, "payment_method", None)
 
 
 class CartItemSerializer(serializers.ModelSerializer):

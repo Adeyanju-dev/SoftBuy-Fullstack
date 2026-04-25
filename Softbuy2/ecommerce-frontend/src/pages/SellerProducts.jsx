@@ -127,6 +127,49 @@ function normalizeImageList(payload) {
   return softbuyApi.extractResults(payload);
 }
 
+function getApiErrorMessage(error, fallbackMessage) {
+  const details = error?.response?.data;
+
+  if (typeof details === "string" && details.trim()) {
+    return details;
+  }
+
+  if (typeof details?.detail === "string" && details.detail.trim()) {
+    return details.detail;
+  }
+
+  if (typeof details?.error === "string" && details.error.trim()) {
+    return details.error;
+  }
+
+  if (typeof details?.message === "string" && details.message.trim()) {
+    return details.message;
+  }
+
+  if (Array.isArray(details)) {
+    const firstMessage = details.find(
+      (value) => typeof value === "string" && value.trim()
+    );
+    if (firstMessage) {
+      return firstMessage;
+    }
+  }
+
+  if (details && typeof details === "object") {
+    const firstFieldValue = Object.values(details)[0];
+
+    if (Array.isArray(firstFieldValue) && firstFieldValue[0]) {
+      return String(firstFieldValue[0]);
+    }
+
+    if (typeof firstFieldValue === "string" && firstFieldValue.trim()) {
+      return firstFieldValue;
+    }
+  }
+
+  return error?.message || fallbackMessage;
+}
+
 function mapProductToForm(product, tags, categories) {
   const attributes = readObject(product?.attributes);
   const dimensions = readObject(product?.dimensions);
@@ -210,6 +253,11 @@ export default function SellerProducts() {
   const [imagePreview, setImagePreview] = useState("");
   const [productImages, setProductImages] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryDescription, setNewCategoryDescription] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [creatingTag, setCreatingTag] = useState(false);
 
   const loadPageData = useCallback(async () => {
     setLoading(true);
@@ -297,6 +345,9 @@ export default function SellerProducts() {
     setSelectedImageFile(null);
     setImagePreview("");
     setProductImages([]);
+    setNewCategoryName("");
+    setNewCategoryDescription("");
+    setNewTagName("");
   };
 
   const openCreateForm = () => {
@@ -562,6 +613,82 @@ export default function SellerProducts() {
     }
   };
 
+  const handleCreateCategory = async () => {
+    const name = newCategoryName.trim();
+
+    if (!name) {
+      setError("Enter a category name before creating one.");
+      return;
+    }
+
+    setCreatingCategory(true);
+    setError("");
+
+    try {
+      const response = await softbuyApi.createCategory({
+        name,
+        description: newCategoryDescription.trim(),
+        is_active: true,
+      });
+      const createdCategory = response.data;
+
+      setCategories((current) =>
+        [...current, createdCategory].sort((left, right) =>
+          String(left?.name || "").localeCompare(String(right?.name || ""))
+        )
+      );
+      setForm((current) => ({
+        ...current,
+        category: createdCategory?.id ? String(createdCategory.id) : current.category,
+      }));
+      setNewCategoryName("");
+      setNewCategoryDescription("");
+      toast.success("Category created");
+    } catch (categoryError) {
+      setError(getApiErrorMessage(categoryError, "Could not create this category."));
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
+  const handleCreateTag = async () => {
+    const name = newTagName.trim();
+
+    if (!name) {
+      setError("Enter a tag name before creating one.");
+      return;
+    }
+
+    setCreatingTag(true);
+    setError("");
+
+    try {
+      const response = await softbuyApi.createTag({ name });
+      const createdTag = response.data;
+      const nextTagId = Number(createdTag?.id || 0);
+
+      setTags((current) =>
+        [...current, createdTag].sort((left, right) =>
+          String(left?.name || "").localeCompare(String(right?.name || ""))
+        )
+      );
+      if (nextTagId) {
+        setForm((current) => ({
+          ...current,
+          tag_ids: current.tag_ids.includes(nextTagId)
+            ? current.tag_ids
+            : [...current.tag_ids, nextTagId],
+        }));
+      }
+      setNewTagName("");
+      toast.success("Tag created");
+    } catch (tagError) {
+      setError(getApiErrorMessage(tagError, "Could not create this tag."));
+    } finally {
+      setCreatingTag(false);
+    }
+  };
+
   return (
     <section className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -645,22 +772,61 @@ export default function SellerProducts() {
                       />
                     </label>
 
-                    <label className="space-y-2">
-                      <span className="text-sm text-slate-300">Category</span>
-                      <select
-                        name="category"
-                        value={form.category}
-                        onChange={handleChange}
-                        className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm outline-none"
-                      >
-                        <option value="">Select category</option>
-                        {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <div className="space-y-3">
+                      <label className="space-y-2">
+                        <span className="text-sm text-slate-300">Category</span>
+                        <select
+                          name="category"
+                          value={form.category}
+                          onChange={handleChange}
+                          className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm outline-none"
+                        >
+                          <option value="">Select category</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <div className="rounded-3xl border border-dashed border-white/10 bg-slate-950/40 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-white">Need a new category?</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Create it here and we will select it for this product automatically.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCreateCategory}
+                            disabled={creatingCategory}
+                            className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Plus className="h-4 w-4" />
+                            {creatingCategory ? "Creating..." : "Create category"}
+                          </button>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <input
+                            type="text"
+                            value={newCategoryName}
+                            onChange={(event) => setNewCategoryName(event.target.value)}
+                            placeholder="Category name"
+                            className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm outline-none"
+                          />
+                          <input
+                            type="text"
+                            value={newCategoryDescription}
+                            onChange={(event) => setNewCategoryDescription(event.target.value)}
+                            placeholder="Short description"
+                            className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
 
                     <label className="space-y-2">
                       <span className="text-sm text-slate-300">Status</span>
@@ -993,6 +1159,33 @@ export default function SellerProducts() {
 
                   <div className="mt-6 rounded-3xl border border-white/10 bg-slate-900/50 p-5">
                     <p className="font-semibold text-white">Tags</p>
+                    <div className="mt-4 rounded-3xl border border-dashed border-white/10 bg-slate-950/40 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-white">Create a tag for this product</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            New tags are added to the selector and attached to this product right away.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCreateTag}
+                          disabled={creatingTag}
+                          className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Plus className="h-4 w-4" />
+                          {creatingTag ? "Creating..." : "Create tag"}
+                        </button>
+                      </div>
+
+                      <input
+                        type="text"
+                        value={newTagName}
+                        onChange={(event) => setNewTagName(event.target.value)}
+                        placeholder="Tag name"
+                        className="mt-4 w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm outline-none"
+                      />
+                    </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {tags.map((tag) => {
                         const active = form.tag_ids.includes(Number(tag.id));

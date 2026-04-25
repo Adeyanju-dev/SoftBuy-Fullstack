@@ -106,11 +106,11 @@ export default function Checkout() {
       const order = createOrderResponse.data?.order || createOrderResponse.data;
       createdOrder = order;
 
-      if (selectedShippingMethod) {
-        await softbuyApi.updateOrderShipping(order.order_number, selectedShippingMethod.id);
-      }
+        if (selectedShippingMethod) {
+          await softbuyApi.updateOrderShipping(order.order_number, selectedShippingMethod.id);
+        }
 
-      if (paymentMethod === "card") {
+        if (paymentMethod === "card") {
         writePendingPayment({
           order,
           paymentMethod,
@@ -122,13 +122,20 @@ export default function Checkout() {
         const paystackResponse = await softbuyApi.initializePaystack(order.id);
         const redirectUrl = extractPaystackUrl(paystackResponse.data);
 
-        if (redirectUrl) {
-          window.location.assign(redirectUrl);
-          return;
+          if (redirectUrl) {
+            window.location.assign(redirectUrl);
+            return;
+          }
+          throw new Error("Paystack did not return a payment link for this order.");
+        } else {
+          await softbuyApi.createPayment({
+            order: order.id,
+            payment_method: paymentMethod,
+            amount: order.total_amount,
+            currency: order.currency || "NGN",
+          });
+          clearPendingPayment();
         }
-      } else {
-        clearPendingPayment();
-      }
 
       try {
         await syncCart();

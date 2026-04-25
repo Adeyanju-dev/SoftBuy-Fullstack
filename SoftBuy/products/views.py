@@ -69,7 +69,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.AllowAny()]
-        return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated(), IsSeller()]
 
 
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -367,7 +367,7 @@ class TagListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.AllowAny()]
-        return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated(), IsSeller()]
 
 
 class TagDetailView(generics.RetrieveUpdateDestroyAPIView):

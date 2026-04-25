@@ -427,7 +427,7 @@ class UserOrdersListView(generics.ListAPIView):
     def get_queryset(self):
         return (
             Order.objects.filter(buyer=self.request.user)
-            .prefetch_related("items", "items__product", "items__variant")
+            .prefetch_related("items", "items__product", "items__variant", "payments")
             .select_related("shipping_info")
         )
 
@@ -441,7 +441,7 @@ class OrderDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         return (
             Order.objects.filter(buyer=self.request.user)
-            .prefetch_related("items", "items__product", "items__variant")
+            .prefetch_related("items", "items__product", "items__variant", "payments")
             .select_related("shipping_info")
         )
 

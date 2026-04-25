@@ -75,7 +75,10 @@ export default function Payments() {
       } catch (verifyError) {
         if (active) {
           setVerification({
-            message: verifyError.response?.data?.error || "Could not verify this reference.",
+            message:
+              verifyError.response?.data?.error ||
+              verifyError.response?.data?.detail ||
+              "Could not verify this reference.",
             reference,
           });
         }
