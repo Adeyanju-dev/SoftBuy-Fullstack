@@ -50,13 +50,13 @@ IS_LOCAL_DEVELOPMENT = DEBUG or parsed_database_url.hostname in {'localhost', '1
 
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173',
+    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,https://soft-buy-fullstack-ot3rr982t-micheals-projects-41f432e2.vercel.app',
     cast=Csv(),
 )
 CORS_ALLOW_CREDENTIALS = env_bool('CORS_ALLOW_CREDENTIALS', default=True)
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173',
+    default='http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,https://soft-buy-fullstack-ot3rr982t-micheals-projects-41f432e2.vercel.app',
     cast=Csv(),
 )
 
