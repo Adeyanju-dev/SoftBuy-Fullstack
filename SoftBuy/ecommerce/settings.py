@@ -267,6 +267,10 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'SoftBuy API',
     'DESCRIPTION': 'Ecommerce backend API for SoftBuy',
     'VERSION': '1.0.0',
+    "SERVERS": [
+        {"url": "https://softbuy-fullstack.onrender.com"}
+    ],
+
     'SERVE_INCLUDE_SCHEMA': False,
     'ENUM_NAME_OVERRIDES': {
         'OrderStatusEnum': 'orders.models.Order.STATUS_CHOICES',
