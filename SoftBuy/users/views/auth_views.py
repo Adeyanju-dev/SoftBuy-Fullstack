@@ -2,10 +2,8 @@ import random
 import logging
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -30,7 +28,11 @@ from ..serializers import (
     UserSerializer,
     VerifyResetCodeSerializer,
 )
-from ..utils import get_frontend_url_from_request, send_verification_email_to_user
+from ..utils import (
+    get_frontend_url_from_request,
+    send_password_reset_code_email,
+    send_verification_email_to_user,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -59,10 +61,10 @@ def register_user(request):
         SellerProfile.objects.create(user=user)
 
     try:
-        send_verification_email_to_user(user, frontend_url=frontend_url)
+        send_verification_email_to_user(user, frontend_url=frontend_url, async_delivery=True)
         user.last_verification_sent = timezone.now()
         user.save(update_fields=["last_verification_sent"])
-    except Exception as exc:
+    except Exception:
         logger.exception("Email sending failed for user_id=%s", user.id)
 
     return Response(
@@ -191,13 +193,7 @@ def request_password_reset(request):
         reset_code.set_code(code)
         reset_code.save()
 
-        send_mail(
-            "Password Reset Code",
-            f"Your password reset code is {code}. It expires in 10 minutes.",
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
-        )
+        send_password_reset_code_email(user, code, async_delivery=True)
 
     return Response(
         {"message": "If the email is registered, a password reset code has been sent."},
@@ -347,7 +343,7 @@ def resend_verification_email(request):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
-    send_verification_email_to_user(user, frontend_url=frontend_url)
+    send_verification_email_to_user(user, frontend_url=frontend_url, async_delivery=True)
     user.last_verification_sent = timezone.now()
     user.save(update_fields=["last_verification_sent"])
 

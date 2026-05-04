@@ -438,8 +438,8 @@ class UsersAPITests(APITestCase):
 
     # Password reset
 
-    @patch("users.views.auth_views.send_mail")
-    def test_request_password_reset_sends_code(self, mock_send_mail):
+    @patch("users.views.auth_views.send_password_reset_code_email")
+    def test_request_password_reset_sends_code(self, mock_send_password_reset_email):
         response = self.client.post(
             self.request_reset_url,
             {"email": self.user.email},
@@ -449,11 +449,14 @@ class UsersAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(PasswordResetCode.objects.filter(user=self.user).exists())
         reset_code = PasswordResetCode.objects.get(user=self.user)
-        sent_message = mock_send_mail.call_args[0][1]
-        sent_code = sent_message.split(" is ")[1].split(".")[0]
+        sent_code = mock_send_password_reset_email.call_args.args[1]
         self.assertNotEqual(reset_code.code, sent_code)
         self.assertTrue(reset_code.check_code(sent_code))
-        mock_send_mail.assert_called_once()
+        self.assertEqual(
+            mock_send_password_reset_email.call_args.kwargs.get("async_delivery"),
+            True,
+        )
+        mock_send_password_reset_email.assert_called_once()
 
     def test_request_password_reset_hides_unknown_email(self):
         response = self.client.post(

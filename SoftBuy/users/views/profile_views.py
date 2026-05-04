@@ -115,6 +115,7 @@ def send_verification_email(request):
     send_verification_email_to_user(
         request.user,
         frontend_url=get_frontend_url_from_request(request),
+        async_delivery=True,
     )
     request.user.last_verification_sent = timezone.now()
     request.user.save(update_fields=["last_verification_sent"])
