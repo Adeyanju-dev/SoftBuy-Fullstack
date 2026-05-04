@@ -2,6 +2,7 @@ import random
 import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
@@ -52,7 +53,9 @@ def register_user(request):
     frontend_url = get_frontend_url_from_request(request)
 
     user = serializer.save()
-    user.email_verified = False
+    should_require_email_verification = getattr(settings, "REQUIRE_EMAIL_VERIFICATION", True)
+
+    user.email_verified = not should_require_email_verification
     user.save(update_fields=["email_verified"])
 
     UserProfile.objects.create(user=user)
@@ -60,17 +63,22 @@ def register_user(request):
     if user.is_seller and not hasattr(user, "seller_profile"):
         SellerProfile.objects.create(user=user)
 
-    try:
-        send_verification_email_to_user(user, frontend_url=frontend_url, async_delivery=True)
-        user.last_verification_sent = timezone.now()
-        user.save(update_fields=["last_verification_sent"])
-    except Exception:
-        logger.exception("Email sending failed for user_id=%s", user.id)
+    if should_require_email_verification:
+        try:
+            send_verification_email_to_user(user, frontend_url=frontend_url, async_delivery=True)
+            user.last_verification_sent = timezone.now()
+            user.save(update_fields=["last_verification_sent"])
+        except Exception:
+            logger.exception("Email sending failed for user_id=%s", user.id)
 
     return Response(
         {
             "user": UserSerializer(user).data,
-            "message": "Account created successfully. Please verify your email before logging in.",
+            "message": (
+                "Account created successfully. Please verify your email before logging in."
+                if should_require_email_verification
+                else "Account created successfully. Email verification is disabled in this demo environment."
+            ),
         },
         status=status.HTTP_201_CREATED,
     )
@@ -148,7 +156,7 @@ def login_user(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    if not user.email_verified:
+    if getattr(settings, "REQUIRE_EMAIL_VERIFICATION", True) and not user.email_verified:
         return Response(
             {"error": "Email is not verified. Please check your email for the verification link."},
             status=status.HTTP_403_FORBIDDEN,
@@ -317,6 +325,7 @@ def resend_verification_email(request):
     serializer = ResendVerificationSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     frontend_url = get_frontend_url_from_request(request)
+    should_require_email_verification = getattr(settings, "REQUIRE_EMAIL_VERIFICATION", True)
 
     email = serializer.validated_data["email"]
 
@@ -326,6 +335,15 @@ def resend_verification_email(request):
         return Response(
             {"error": "No account was found for this email address."},
             status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not should_require_email_verification:
+        if not user.email_verified:
+            user.email_verified = True
+            user.save(update_fields=["email_verified"])
+        return Response(
+            {"message": "Email verification is disabled in this environment. This account is ready to use."},
+            status=status.HTTP_200_OK,
         )
 
     if user.email_verified:

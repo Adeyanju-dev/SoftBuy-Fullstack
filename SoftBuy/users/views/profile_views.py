@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
@@ -110,6 +111,15 @@ def send_verification_email(request):
         return Response(
             {"error": "Seller profile was not found."},
             status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not getattr(settings, "REQUIRE_EMAIL_VERIFICATION", True):
+        if not request.user.email_verified:
+            request.user.email_verified = True
+            request.user.save(update_fields=["email_verified"])
+        return Response(
+            {"message": "Email verification is disabled in this environment. This account is ready to use."},
+            status=status.HTTP_200_OK,
         )
 
     send_verification_email_to_user(

@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.tokens import default_token_generator
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes
@@ -129,6 +130,28 @@ class UsersAPITests(APITestCase):
         self.assertTrue(SellerProfile.objects.filter(user=user).exists())
         mock_send_email.assert_called_once()
 
+    @override_settings(REQUIRE_EMAIL_VERIFICATION=False)
+    @patch("users.views.auth_views.send_verification_email_to_user")
+    def test_user_can_register_without_email_verification_in_portfolio_mode(self, mock_send_email):
+        payload = {
+            "email": "portfolio@example.com",
+            "first_name": "Portfolio",
+            "last_name": "User",
+            "password": "StrongPass123!",
+            "password2": "StrongPass123!",
+        }
+
+        response = self.client.post(self.register_url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email="portfolio@example.com")
+        self.assertTrue(user.email_verified)
+        self.assertEqual(
+            response.data["message"],
+            "Account created successfully. Email verification is disabled in this demo environment.",
+        )
+        mock_send_email.assert_not_called()
+
     def test_register_rejects_password_mismatch(self):
         payload = {
             "email": "bad@example.com",
@@ -214,6 +237,17 @@ class UsersAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @override_settings(REQUIRE_EMAIL_VERIFICATION=False)
+    def test_login_allows_unverified_user_in_portfolio_mode(self):
+        response = self.client.post(
+            self.login_url,
+            {"email": self.unverified_user.email, "password": "StrongPass123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
 
     # User profile
 
@@ -430,6 +464,24 @@ class UsersAPITests(APITestCase):
         mock_send_email.assert_called_once()
         self.assertEqual(mock_send_email.call_args.args[0], self.seller_user)
 
+    @override_settings(REQUIRE_EMAIL_VERIFICATION=False)
+    @patch("users.views.profile_views.send_verification_email_to_user")
+    def test_seller_verification_endpoint_short_circuits_in_portfolio_mode(self, mock_send_email):
+        self.seller_user.email_verified = False
+        self.seller_user.save(update_fields=["email_verified"])
+
+        self.authenticate(self.seller_user)
+        response = self.client.post(self.send_seller_verification_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["message"],
+            "Email verification is disabled in this environment. This account is ready to use.",
+        )
+        self.seller_user.refresh_from_db()
+        self.assertTrue(self.seller_user.email_verified)
+        mock_send_email.assert_not_called()
+
     def test_buyer_cannot_send_seller_verification_email(self):
         self.authenticate(self.user)
         response = self.client.post(self.send_seller_verification_url)
@@ -610,3 +662,21 @@ class UsersAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["message"], "This email address has already been verified.")
+
+    @override_settings(REQUIRE_EMAIL_VERIFICATION=False)
+    @patch("users.views.auth_views.send_verification_email_to_user")
+    def test_resend_verification_email_short_circuits_in_portfolio_mode(self, mock_send_email):
+        response = self.client.post(
+            self.resend_verification_url,
+            {"email": self.unverified_user.email},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["message"],
+            "Email verification is disabled in this environment. This account is ready to use.",
+        )
+        self.unverified_user.refresh_from_db()
+        self.assertTrue(self.unverified_user.email_verified)
+        mock_send_email.assert_not_called()
