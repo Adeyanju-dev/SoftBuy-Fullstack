@@ -23,6 +23,19 @@ from .serializers import (
 from drf_spectacular.utils import extend_schema
 
 
+TRUTHY_QUERY_VALUES = {"1", "true", "yes", "on"}
+FALSY_QUERY_VALUES = {"0", "false", "no", "off"}
+
+
+def parse_boolean_query_param(value):
+    normalized = str(value or "").strip().lower()
+    if normalized in TRUTHY_QUERY_VALUES:
+        return True
+    if normalized in FALSY_QUERY_VALUES:
+        return False
+    return None
+
+
 def filter_product_queryset_for_request(queryset, request):
     user = request.user
 
@@ -148,6 +161,7 @@ class ProductListCreateView(ProductQuerysetMixin, generics.ListCreateAPIView):
         seller = self.request.query_params.get("seller")
         min_price = self.request.query_params.get("min_price")
         max_price = self.request.query_params.get("max_price")
+        in_stock = parse_boolean_query_param(self.request.query_params.get("in_stock"))
         ordering = self.request.query_params.get("ordering", "-created_at")
 
         user = self.request.user
@@ -204,6 +218,11 @@ class ProductListCreateView(ProductQuerysetMixin, generics.ListCreateAPIView):
 
         if max_price:
             queryset = queryset.filter(price__lte=max_price)
+
+        if in_stock is True:
+            queryset = queryset.filter(stock__gt=0)
+        elif in_stock is False:
+            queryset = queryset.filter(stock=0)
 
         allowed_ordering = {"created_at", "-created_at", "price", "-price", "title", "-title"}
         if ordering not in allowed_ordering:

@@ -2,7 +2,10 @@ from decimal import Decimal
 from io import BytesIO
 import shutil
 import tempfile
+from unittest.mock import patch
 
+import cloudinary
+from cloudinary import CloudinaryResource
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.urls import reverse
@@ -20,9 +23,38 @@ TEST_MEDIA_ROOT = tempfile.mkdtemp()
 @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
 class ProductAPITests(APITestCase):
     @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cloudinary.config(
+            cloud_name="test-cloud",
+            api_key="test-key",
+            api_secret="test-secret",
+            secure=True,
+        )
+        cls.cloudinary_upload_patcher = patch(
+            "cloudinary.models.uploader.upload_resource",
+            side_effect=cls.mock_cloudinary_upload,
+        )
+        cls.cloudinary_upload_patcher.start()
+
+    @classmethod
     def tearDownClass(cls):
+        cls.cloudinary_upload_patcher.stop()
         super().tearDownClass()
         shutil.rmtree(TEST_MEDIA_ROOT, ignore_errors=True)
+
+    @staticmethod
+    def mock_cloudinary_upload(file_obj, **kwargs):
+        file_name = getattr(file_obj, "name", "test-image.jpg")
+        public_id = f"test-products/{file_name.rsplit('.', 1)[0]}"
+        return CloudinaryResource(
+            public_id,
+            version="1",
+            format="jpg",
+            type=kwargs.get("type", "upload"),
+            resource_type=kwargs.get("resource_type", "image"),
+            metadata={"public_id": public_id},
+        )
 
     def setUp(self):
         self.client = APIClient()
@@ -533,6 +565,28 @@ class ProductAPITests(APITestCase):
 
     def test_product_filter_by_max_price(self):
         response = self.client.get(self.product_list_url, {"max_price": "400000"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        titles = [item["title"] for item in self.extract_results(response)]
+        self.assertIn(self.other_seller_product.title, titles)
+        self.assertNotIn(self.published_product.title, titles)
+
+    def test_product_filter_by_in_stock(self):
+        self.other_seller_product.stock = 0
+        self.other_seller_product.save(update_fields=["stock"])
+
+        response = self.client.get(self.product_list_url, {"in_stock": "true"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        titles = [item["title"] for item in self.extract_results(response)]
+        self.assertIn(self.published_product.title, titles)
+        self.assertNotIn(self.other_seller_product.title, titles)
+
+    def test_product_filter_by_out_of_stock(self):
+        self.other_seller_product.stock = 0
+        self.other_seller_product.save(update_fields=["stock"])
+
+        response = self.client.get(self.product_list_url, {"in_stock": "false"})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         titles = [item["title"] for item in self.extract_results(response)]
