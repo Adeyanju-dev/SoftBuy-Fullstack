@@ -73,7 +73,7 @@ def build_origin_values(*values, default_scheme="https"):
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = env_bool('DEBUG', default=False)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
 
 FRONTEND_URL = (
@@ -191,7 +191,7 @@ WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
 DATABASES = {
     "default": dj_database_url.parse(
-        os.getenv("DATABASE_URL"),
+        DATABASE_URL,
         conn_max_age=600,
     )
 }
@@ -275,7 +275,7 @@ SIMPLE_JWT = {
 PAYSTACK_SECRET_KEY = config("PAYSTACK_SECRET_KEY")
 PAYSTACK_PUBLIC_KEY = config("PAYSTACK_PUBLIC_KEY")
 PAYSTACK_BASE_URL = config("PAYSTACK_BASE_URL")
-PAYSTACK_CALLBACK_URL = config("PAYSTACK_CALLBACK_URL")
+PAYSTACK_CALLBACK_URL = config("PAYSTACK_CALLBACK_URL", default="/verify-payment")
 
 # Email Configuration
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')

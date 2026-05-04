@@ -2,6 +2,7 @@ from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import requests
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
@@ -750,6 +751,96 @@ class PaymentAPITests(APITestCase):
         self.assertTrue(response.data["status"])
         payment = Payment.objects.get(order=payable_order)
         self.assertTrue(payment.reference)
+
+    @override_settings(
+        FRONTEND_URL="https://shop.example.com",
+        PAYSTACK_CALLBACK_URL="http://localhost:5173/payment/ver",
+        CORS_ALLOWED_ORIGINS=["https://shop.example.com", "https://preview.example.com"],
+    )
+    @patch("payments.views.requests.post")
+    def test_paystack_initialize_uses_allowed_request_origin_for_callback_url(self, mock_post):
+        self.authenticate(self.buyer)
+
+        payable_order = Order.objects.create(
+            buyer=self.buyer,
+            total_amount=Decimal("75000.00"),
+            subtotal_amount=Decimal("75000.00"),
+            tax_amount=Decimal("0.00"),
+            shipping_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            currency="NGN",
+        )
+
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "status": True,
+            "message": "Authorization URL created",
+            "data": {
+                "authorization_url": "https://checkout.paystack.com/test",
+                "access_code": "abc123",
+                "reference": f"ORDER-{payable_order.id}-abc1234567",
+            },
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        response = self.client.post(
+            self.paystack_init_url,
+            {"order_id": payable_order.id},
+            format="json",
+            HTTP_ORIGIN="https://preview.example.com",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            mock_post.call_args.kwargs["json"]["callback_url"],
+            "https://preview.example.com/payment/ver",
+        )
+
+    @override_settings(
+        FRONTEND_URL="https://shop.example.com",
+        PAYSTACK_CALLBACK_URL="/verify-payment",
+        CORS_ALLOWED_ORIGINS=["https://shop.example.com"],
+    )
+    @patch("payments.views.requests.post")
+    def test_paystack_initialize_falls_back_to_frontend_url_for_unapproved_origin(self, mock_post):
+        self.authenticate(self.buyer)
+
+        payable_order = Order.objects.create(
+            buyer=self.buyer,
+            total_amount=Decimal("75000.00"),
+            subtotal_amount=Decimal("75000.00"),
+            tax_amount=Decimal("0.00"),
+            shipping_amount=Decimal("0.00"),
+            discount_amount=Decimal("0.00"),
+            currency="NGN",
+        )
+
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "status": True,
+            "message": "Authorization URL created",
+            "data": {
+                "authorization_url": "https://checkout.paystack.com/test",
+                "access_code": "abc123",
+                "reference": f"ORDER-{payable_order.id}-abc1234567",
+            },
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        response = self.client.post(
+            self.paystack_init_url,
+            {"order_id": payable_order.id},
+            format="json",
+            HTTP_ORIGIN="https://untrusted.example.com",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            mock_post.call_args.kwargs["json"]["callback_url"],
+            "https://shop.example.com/verify-payment",
+        )
 
     @patch("payments.views.requests.post")
     def test_paystack_initialize_backfills_missing_reference_on_existing_pending_payment(self, mock_post):

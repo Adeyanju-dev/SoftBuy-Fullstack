@@ -1,5 +1,7 @@
 import uuid
 from decimal import Decimal
+import re
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -24,6 +26,82 @@ from .serializers import (
     TransactionSerializer,
     PaystackInitializeSerializer,
 )
+
+
+DEFAULT_PAYSTACK_CALLBACK_PATH = "/verify-payment"
+
+
+def _normalize_origin(value, default_scheme="https"):
+    raw_value = str(value or "").strip().rstrip("/")
+    if not raw_value:
+        return ""
+
+    parsed = urlparse(raw_value if "://" in raw_value else f"{default_scheme}://{raw_value}")
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _resolve_paystack_callback_path():
+    configured_value = str(
+        getattr(settings, "PAYSTACK_CALLBACK_PATH", "")
+        or getattr(settings, "PAYSTACK_CALLBACK_URL", "")
+        or ""
+    ).strip()
+    if not configured_value:
+        return DEFAULT_PAYSTACK_CALLBACK_PATH
+
+    if "://" in configured_value:
+        configured_path = urlparse(configured_value).path
+    else:
+        configured_path = configured_value
+
+    normalized_path = str(configured_path or "").strip()
+    if not normalized_path:
+        return DEFAULT_PAYSTACK_CALLBACK_PATH
+
+    return normalized_path if normalized_path.startswith("/") else f"/{normalized_path}"
+
+
+def _is_allowed_browser_origin(origin):
+    if not origin:
+        return False
+
+    allowed_origins = {
+        _normalize_origin(getattr(settings, "FRONTEND_URL", "")),
+    }
+    allowed_origins.update(
+        _normalize_origin(value)
+        for value in getattr(settings, "CORS_ALLOWED_ORIGINS", [])
+    )
+
+    if origin in allowed_origins:
+        return True
+
+    for pattern in getattr(settings, "CORS_ALLOWED_ORIGIN_REGEXES", []):
+        try:
+            if re.match(pattern, origin):
+                return True
+        except re.error:
+            continue
+
+    return False
+
+
+def _resolve_paystack_callback_url(request):
+    # Prefer the actual frontend origin that started checkout so Paystack returns
+    # to the same environment instead of a stale configured host.
+    for value in [request.headers.get("Origin"), request.headers.get("Referer")]:
+        normalized = _normalize_origin(value)
+        if _is_allowed_browser_origin(normalized):
+            return f"{normalized}{_resolve_paystack_callback_path()}"
+
+    frontend_origin = _normalize_origin(getattr(settings, "FRONTEND_URL", ""))
+    if frontend_origin:
+        return f"{frontend_origin}{_resolve_paystack_callback_path()}"
+
+    return _resolve_paystack_callback_path()
 
 
 class IsBuyerOrAdmin(permissions.BasePermission):
@@ -363,7 +441,7 @@ class PaystackInitializeView(APIView):
             "email": request.user.email,
             "amount": amount,
             "reference": reference,
-            "callback_url": settings.PAYSTACK_CALLBACK_URL,
+            "callback_url": _resolve_paystack_callback_url(request),
         }
         url = f"{settings.PAYSTACK_BASE_URL}/transaction/initialize"
 

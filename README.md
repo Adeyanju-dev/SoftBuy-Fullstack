@@ -1,89 +1,68 @@
-# 🛒 SoftBuy – Fullstack E-commerce Platform
+# SoftBuy Fullstack
 
-SoftBuy is a fullstack e-commerce web application built with a modern tech stack. It provides a complete online shopping experience including authentication, product browsing, cart management, order processing, and payments.
+SoftBuy is a fullstack e-commerce project with a Django REST backend and a React + Vite frontend. It covers authentication, product browsing, cart and checkout flows, orders, seller tools, and Paystack-based card payments.
 
----
+## Stack
 
-## 🚀 Tech Stack
+- Backend: Django, Django REST Framework, PostgreSQL
+- Frontend: React, Vite, Tailwind CSS
+- Payments: Paystack
+- Media: Cloudinary
 
-### Frontend
-- React (Vite)
-- Tailwind CSS
-- Context API (State Management)
+## Project Structure
 
-### Backend
-- Django
-- Django REST Framework
-- PostgreSQL
-
----
-
-## ✨ Features
-
-### 🔐 Authentication System
-- User registration & login
-- Email verification
-- Password reset system
-- JWT authentication
-
-### 🛍️ E-commerce Functionality
-- Product listing & details
-- Add to cart
-- Wishlist system
-- Order creation & checkout
-- Shipping method integration
-
-### 💳 Payments
-- Payment processing integration
-- Order tracking
-
-### 👤 User Features
-- Profile management
-- Address management
-- Order history
-
-### 🏪 Seller Features
-- Seller dashboard
-- Product management
-- Sales tracking
-
----
-
-## 📂 Project Structure
-
+```text
 SoftBuy-Fullstack/
-|
-|---SoftBuy (Backend)
-|---SoftBuy2 (Frontend)
-
----
-
-## ⚙️ Installation Guide
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/Adeyanju-dev/SoftBuy-Fullstack.git
-cd SoftBuy-Fullstack
+|-- SoftBuy/                     # Django backend
+|-- Softbuy2/ecommerce-frontend/ # React frontend
 ```
 
-### 2. Backend Setup (Django)
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate   # Windows
-pip install -r requirements.txt
+## Backend Setup
 
+```bash
+cd SoftBuy
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Create your backend env file from the example:
+
+```bash
+copy .env.example .env
+```
+
+Update `.env` with your real database, Paystack, email, and Cloudinary values, then run:
+
+```bash
 python manage.py migrate
 python manage.py runserver
 ```
 
-### 3.Frontend Setup (React)
+## Frontend Setup
+
 ```bash
-cd frontend
+cd Softbuy2/ecommerce-frontend
 npm install
 npm run dev
 ```
----
 
-### Author
-- Github: https://github.com/Adeyanju-dev
+## Important Env Notes
+
+- Set `FRONTEND_URL` to the frontend origin that should receive payment returns.
+- Keep `PAYSTACK_CALLBACK_URL` as a frontend path such as `/verify-payment`.
+- For local development, the default frontend URL is `http://localhost:5173`.
+
+## Verification
+
+Useful checks before upgrading:
+
+```bash
+cd SoftBuy
+venv\Scripts\python.exe manage.py check
+venv\Scripts\python.exe manage.py test payments.tests.PaymentAPITests
+
+cd ..\Softbuy2\ecommerce-frontend
+npm run lint
+npm run build
+```

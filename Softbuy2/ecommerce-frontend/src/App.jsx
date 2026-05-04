@@ -128,6 +128,7 @@ export default function App() {
                 />
                 <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/verify-payment" element={<OrderSuccess />} />
+                <Route path="/payment/ver" element={<OrderSuccess />} />
                 <Route path="/payment/verify" element={<OrderSuccess />} />
                 <Route path="/payments/verify" element={<OrderSuccess />} />
                 <Route path="/paystack/callback" element={<OrderSuccess />} />
